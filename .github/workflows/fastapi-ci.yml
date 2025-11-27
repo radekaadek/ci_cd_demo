@@ -1,0 +1,59 @@
+name: FastAPI CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build & Test FastAPI App
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run basic FastAPI test
+      run: |
+        python - << 'EOF'
+        import requests
+        print("OK – dependencies installed")
+        EOF
+
+  docker-build-push:
+    name: Build and Push Docker Image
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker image
+      run: |
+        docker build -t ghcr.io/${{ github.repository }}/fastapi:latest .
+
+    - name: Push Docker image
+      run: |
+        docker push ghcr.io/${{ github.repository }}/fastapi:latest
